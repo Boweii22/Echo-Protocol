@@ -340,7 +340,7 @@ body{
   border-radius:50%;
   background:var(--green);
   box-shadow:0 0 8px var(--green-glow);
-  animation:pulseDot 1.6s ease-in-out infinite;
+  animation:pulseDot 2s ease-in-out infinite;
 }
 @keyframes pulseDot{
   0%,100%{transform:scale(1);opacity:1;}
@@ -1153,7 +1153,7 @@ async function timeUp(){
   if (STATE.locked) return;
   STATE.locked = true;
   disableAllResponses();
-  STATE.trust -= 20;
+  STATE.trust -= 34;
   STATE.secretsLeft -= 1;
   STATE.total += 1;
   flash('red');
@@ -1218,7 +1218,7 @@ async function selectResponse(choice, btnEl){
     addEchoMessage(choice.text);
     addSystemMessage(STATE.roundData.correct_feedback);
   } else {
-    STATE.trust -= 25;
+    STATE.trust -= 40;
     STATE.secretsLeft -= 1;
     btnEl.classList.add('wrong');
     flash('red');
@@ -1320,7 +1320,7 @@ function updateStats(){
   secretsEl.textContent = Math.max(0, STATE.secretsLeft);
   roundEl.textContent = `${Math.min(STATE.round, 5)}/5`;
 
-  trustEl.classList.toggle('danger', STATE.trust <= 25);
+  trustEl.classList.toggle('danger', STATE.trust <= 30);
   secretsEl.classList.toggle('danger', STATE.secretsLeft <= 1);
 }
 
