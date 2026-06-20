@@ -1262,32 +1262,55 @@ This is round ${STATE.round} of 5. Adjust your intensity accordingly — by roun
 Stay under 45 words. End with either an implicit challenge or a question.`;
 
   let responseText = null;
-  const geminiKey = getGeminiKey();
 
-  if (geminiKey) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }]
-          })
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          responseText = text.trim();
-        }
+  // 1. Server proxy first — uses the host's GEMINI_API_KEY (set in Vercel env vars),
+  // works for every visitor on the deployed site without exposing the key.
+  try {
+    const res = await fetch('/api/interrogator', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.text) {
+        responseText = data.text.trim();
       }
-    } catch (e) {
-      responseText = null;
+    }
+  } catch (e) {
+    responseText = null;
+  }
+
+  // 2. No proxy available (e.g. opened as a local file with no server) — fall back
+  // to a personal key the player pasted into the title screen, stored locally only.
+  if (!responseText) {
+    const geminiKey = getGeminiKey();
+    if (geminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: systemPrompt }] }]
+            })
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            responseText = text.trim();
+          }
+        }
+      } catch (e) {
+        responseText = null;
+      }
     }
   }
 
+  // 3. Neither available or both failed — scripted fallback line.
   if (!responseText) {
     responseText = getFailsafeResponse(playerChoice);
   }
