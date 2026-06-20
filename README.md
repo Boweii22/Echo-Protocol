@@ -1,4 +1,6 @@
 # ECHO PROTOCOL
+<img width="1587" height="891" alt="Screenshot 2026-06-20 204902" src="https://github.com/user-attachments/assets/246340ad-bfb4-4527-91fe-3177ced6f632" />
+
 
 > *"A dead man's code is the only thing that can set you free."*
 
