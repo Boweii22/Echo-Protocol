@@ -1420,6 +1420,18 @@ geminiKeyInput.addEventListener('change', () => {
   localStorage.setItem(GEMINI_KEY_STORAGE, geminiKeyInput.value.trim());
 });
 
+(async () => {
+  try {
+    const res = await fetch('/api/interrogator', { method: 'GET' });
+    const data = await res.json();
+    if (res.ok && data && data.ok) {
+      document.querySelector('.key-entry').style.display = 'none';
+    }
+  } catch (e) {
+    // proxy unreachable (e.g. running as a local file) — leave the field visible
+  }
+})();
+
 runBoot();
 </script>
 </body>

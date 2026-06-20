@@ -1,4 +1,10 @@
 module.exports = async (req, res) => {
+  if (req.method === 'GET') {
+    const configured = !!process.env.GEMINI_API_KEY;
+    res.status(configured ? 200 : 503).json({ ok: configured });
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
