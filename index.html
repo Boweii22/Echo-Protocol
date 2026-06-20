@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECHO PROTOCOL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+:root{
+  --bg:#030a05;
+  --bg2:#050e07;
+  --paper:#0a1a0c;
+  --green:#00ff9f;
+  --green-dim:#00cc7a;
+  --green-ghost:rgba(0,255,159,0.08);
+  --green-glow:rgba(0,255,159,0.35);
+  --amber:#ffb347;
+  --red:#ff4444;
+  --red-dim:rgba(255,68,68,0.15);
+  --text:#c8f0d0;
+  --text-dim:#4a7a55;
+  --border:rgba(0,255,159,0.2);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:400;
+  height:100%;
+  overflow:hidden;
+}
+
+body{
+  position:relative;
+  width:100vw;
+  height:100vh;
+}
+
+::selection{background:var(--green-ghost);color:var(--green);}
+
+/* ===== ATMOSPHERE LAYERS ===== */
+#scanlines{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,255,159,0.15) 3px,
+    rgba(0,0,0,0) 4px
+  );
+  pointer-events:none;
+  z-index:999;
+  mix-blend-mode:overlay;
+}
+
+#vignette{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+  pointer-events:none;
+  z-index:998;
+}
+
+#noise{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  opacity:0.4;
+  pointer-events:none;
+  z-index:997;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;
+}
+
+#scanSweep{
+  position:fixed;top:0;left:0;width:100%;height:2px;
+  background:linear-gradient(to right, transparent, var(--green-glow), transparent);
+  pointer-events:none;
+  z-index:996;
+  animation:sweep 4s linear infinite;
+  opacity:0.5;
+}
+
+@keyframes sweep{
+  0%{top:0%;}
+  100%{top:100%;}
+}
+
+#flashGreen,#flashRed{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;
+  z-index:1000;
+  opacity:0;
+  transition:opacity 0.1s;
+}
+#flashGreen{background:rgba(0,255,159,0.18);}
+#flashRed{background:rgba(255,68,68,0.18);}
+#flashGreen.show,#flashRed.show{opacity:1;}
+
+/* ===== SCREENS ===== */
+.screen{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  overflow-y:auto;
+}
+.screen.active{display:flex;}
+
+/* ===== SCREEN 1: BOOT/INTRO ===== */
+#bootText{
+  font-family:'Share Tech Mono',monospace;
+  color:var(--green-dim);
+  font-size:14px;
+  line-height:1.8;
+  max-width:700px;
+  padding:20px;
+  white-space:pre-wrap;
+}
+.boot-cursor{
+  display:inline-block;
+  background:var(--green);
+  width:8px;height:14px;
+  animation:blink 0.8s steps(1) infinite;
+  vertical-align:middle;
+}
+@keyframes blink{50%{opacity:0;}}
+
+#titleBlock{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  opacity:0;
+  transition:opacity 1.2s ease;
+}
+#titleBlock.show{display:flex;opacity:1;}
+
+.glitch-title{
+  font-family:'VT323',monospace;
+  font-size:clamp(48px,12vw,108px);
+  color:var(--green);
+  letter-spacing:0.08em;
+  position:relative;
+  text-shadow:0 0 20px var(--green-glow), 0 0 60px rgba(0,255,159,0.15);
+  animation:flicker 6s infinite;
+}
+.glitch-title::before,.glitch-title::after{
+  content:attr(data-text);
+  position:absolute;top:0;left:0;width:100%;
+  clip-path:inset(0 0 0 0);
+}
+.glitch-title::before{
+  color:var(--red);
+  animation:glitchTop 3.5s infinite linear alternate-reverse;
+  opacity:0.7;
+}
+.glitch-title::after{
+  color:var(--green-dim);
+  animation:glitchBottom 2.8s infinite linear alternate-reverse;
+  opacity:0.7;
+}
+@keyframes glitchTop{
+  0%{clip-path:inset(0 0 90% 0);transform:translate(-2px,-1px);}
+  20%{clip-path:inset(10% 0 60% 0);transform:translate(2px,1px);}
+  40%{clip-path:inset(40% 0 30% 0);transform:translate(-1px,2px);}
+  60%{clip-path:inset(70% 0 5% 0);transform:translate(1px,-2px);}
+  80%{clip-path:inset(20% 0 50% 0);transform:translate(-2px,1px);}
+  100%{clip-path:inset(0 0 90% 0);transform:translate(2px,-1px);}
+}
+@keyframes glitchBottom{
+  0%{clip-path:inset(80% 0 0 0);transform:translate(2px,1px);}
+  25%{clip-path:inset(40% 0 30% 0);transform:translate(-2px,-1px);}
+  50%{clip-path:inset(10% 0 70% 0);transform:translate(1px,2px);}
+  75%{clip-path:inset(60% 0 10% 0);transform:translate(-1px,-2px);}
+  100%{clip-path:inset(80% 0 0 0);transform:translate(2px,1px);}
+}
+@keyframes flicker{
+  0%,95%{opacity:1;}
+  96%{opacity:0.4;}
+  97%{opacity:1;}
+  98%{opacity:0.4;}
+  99%,100%{opacity:1;}
+}
+
+.subtitle{
+  font-family:'Share Tech Mono',monospace;
+  color:var(--red);
+  letter-spacing:0.3em;
+  font-size:13px;
+  margin-top:18px;
+  text-transform:uppercase;
+}
+.date-line{
+  font-family:'Share Tech Mono',monospace;
+  color:var(--text-dim);
+  letter-spacing:0.15em;
+  font-size:12px;
+  margin-top:10px;
+}
+
+.btn{
+  background:transparent;
+  border:1px solid var(--green);
+  color:var(--green);
+  font-family:'Share Tech Mono',monospace;
+  letter-spacing:0.3em;
+  text-transform:uppercase;
+  font-size:13px;
+  padding:14px 32px;
+  cursor:pointer;
+  transition:background 0.2s, box-shadow 0.2s;
+  margin-top:40px;
+}
+.btn:hover{
+  background:var(--green-ghost);
+  box-shadow:0 0 20px var(--green-glow);
+}
+.btn.red{border-color:var(--red);color:var(--red);}
+.btn.red:hover{background:var(--red-dim);box-shadow:0 0 20px rgba(255,68,68,0.35);}
+
+/* ===== SCREEN 2: BRIEFING ===== */
+#briefingCard{
+  max-width:680px;
+  width:90%;
+  padding:40px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  box-shadow:0 0 40px rgba(0,0,0,0.6);
+}
+.brief-label{
+  font-family:'Share Tech Mono',monospace;
+  color:var(--text-dim);
+  font-size:11px;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+.brief-title{
+  font-family:'VT323',monospace;
+  font-size:38px;
+  color:var(--green);
+  margin-bottom:24px;
+  letter-spacing:0.05em;
+}
+.brief-body{
+  font-size:13.5px;
+  line-height:1.9;
+  color:var(--text);
+  font-weight:300;
+}
+.brief-body p{margin-bottom:16px;}
+.highlight{color:var(--green);font-weight:500;}
+.redacted{
+  background:var(--text-dim);
+  color:var(--text-dim);
+  user-select:none;
+  padding:0 4px;
+  border-radius:1px;
+}
+.brief-footer{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:30px;
+}
+
+/* ===== SCREEN 3: GAME ===== */
+#game{
+  display:flex;
+  flex-direction:row;
+  align-items:stretch;
+  justify-content:stretch;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+
+#teletypePanel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid var(--border);
+  min-width:0;
+  height:100%;
+}
+
+.panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 24px;
+  border-bottom:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.15em;
+  color:var(--text-dim);
+  text-transform:uppercase;
+}
+
+.status-dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px var(--green-glow);
+  animation:pulseDot 1.6s ease-in-out infinite;
+}
+@keyframes pulseDot{
+  0%,100%{transform:scale(1);opacity:1;}
+  50%{transform:scale(1.6);opacity:0.5;}
+}
+
+.round-strip{
+  padding:8px 24px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.2em;
+  color:var(--green-dim);
+  border-bottom:1px solid var(--border);
+  text-transform:uppercase;
+}
+
+#log{
+  flex:1;
+  overflow-y:auto;
+  padding:20px 24px;
+  scroll-behavior:smooth;
+}
+
+.msg{
+  margin-bottom:18px;
+  animation:fadeIn 0.4s ease;
+  max-width:90%;
+}
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(4px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.msg .label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.2em;
+  margin-bottom:6px;
+  display:block;
+}
+
+.msg.interrogator{
+  border-left:2px solid var(--red);
+  padding-left:14px;
+}
+.msg.interrogator .label{color:var(--red);}
+.msg.interrogator .text{color:#e8c8c8;font-size:13.5px;line-height:1.7;}
+
+.msg.echo{
+  border-left:2px solid var(--green-dim);
+  padding-left:14px;
+  margin-left:auto;
+}
+.msg.echo .label{color:var(--green-dim);}
+.msg.echo .text{color:var(--text);font-size:13.5px;line-height:1.7;}
+
+.msg.system{
+  font-style:italic;
+  color:var(--text-dim);
+  font-size:11.5px;
+  border-left:none;
+  padding-left:0;
+  max-width:100%;
+}
+
+#typingIndicator{
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding-left:14px;
+  margin-bottom:18px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  color:var(--red);
+}
+#typingIndicator.visible{display:flex;}
+.dots{display:flex;gap:4px;}
+.dots span{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--red);
+  animation:bounceDot 1.2s infinite ease-in-out;
+}
+.dots span:nth-child(2){animation-delay:0.15s;}
+.dots span:nth-child(3){animation-delay:0.3s;}
+@keyframes bounceDot{
+  0%,80%,100%{transform:translateY(0);opacity:0.4;}
+  40%{transform:translateY(-4px);opacity:1;}
+}
+
+#cipherPanel{
+  width:380px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+
+#timerBar{
+  height:3px;
+  width:100%;
+  background:var(--green);
+  transition:width 0.1s linear;
+}
+#timerBar.warning{background:var(--amber);box-shadow:0 0 8px var(--amber);}
+#timerBar.critical{background:var(--red);box-shadow:0 0 8px var(--red);animation:timerPulse 0.5s infinite;}
+@keyframes timerPulse{50%{opacity:0.5;}}
+
+.rotor-section{
+  padding:20px 24px;
+  border-bottom:1px solid var(--border);
+}
+
+.section-label-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  margin-bottom:14px;
+}
+.section-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.15em;
+  color:var(--text-dim);
+  text-transform:uppercase;
+}
+#timerDisplay{
+  font-family:'VT323',monospace;
+  font-size:22px;
+  color:var(--green);
+}
+#timerDisplay.warning{color:var(--amber);}
+#timerDisplay.critical{color:var(--red);}
+
+.rotor-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.rotor{
+  width:64px;height:64px;
+  border:1px solid var(--border);
+  background:var(--bg2);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  position:relative;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.rotor:hover{border-color:var(--green-dim);}
+.rotor-char{
+  font-family:'VT323',monospace;
+  font-size:28px;
+  color:var(--text);
+}
+.rotor-hint{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;
+  color:var(--text-dim);
+  letter-spacing:0.1em;
+  margin-top:2px;
+}
+.rotor.solved{
+  border-color:var(--green);
+  box-shadow:0 0 12px var(--green-glow);
+  pointer-events:none;
+}
+.rotor.solved .rotor-char{color:var(--green);}
+.rotor.solved::after{
+  content:'✓';
+  position:absolute;
+  top:3px;right:5px;
+  color:var(--green);
+  font-size:10px;
+}
+.rotor.rotor-spinning .rotor-char{
+  animation:spinChar 0.15s ease;
+}
+@keyframes spinChar{
+  0%{transform:translateY(-6px);opacity:0.3;}
+  100%{transform:translateY(0);opacity:1;}
+}
+
+.cipher-display{
+  font-family:'Share Tech Mono',monospace;
+  font-size:14px;
+  letter-spacing:0.3em;
+  color:var(--text-dim);
+  text-align:center;
+}
+.solved-char{color:var(--green);}
+
+.responses-section{
+  flex:1;
+  overflow-y:auto;
+  padding:20px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.response-btn{
+  position:relative;
+  background:var(--paper);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px;
+  font-weight:400;
+  line-height:1.6;
+  text-align:left;
+  padding:14px 16px 14px 20px;
+  cursor:pointer;
+  overflow:hidden;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.response-btn::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;
+  width:3px;height:100%;
+  background:var(--green);
+  transform:scaleY(0);
+  transform-origin:bottom;
+  transition:transform 0.2s ease;
+}
+.response-btn:hover::before{transform:scaleY(1);}
+.response-btn:hover{
+  border-color:var(--green-dim);
+  box-shadow:0 0 14px rgba(0,255,159,0.15);
+}
+
+.response-btn.locked{
+  filter:blur(3px);
+  pointer-events:none;
+  user-select:none;
+}
+.response-btn.locked::after{
+  content:'[ DECODE REQUIRED ]';
+  position:absolute;
+  top:0;left:0;width:100%;height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(3,10,5,0.6);
+  color:var(--text-dim);
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.15em;
+  filter:none;
+}
+
+.response-btn.correct{
+  border-color:var(--green);
+  background:var(--green-ghost);
+  pointer-events:none;
+}
+.response-btn.wrong{
+  border-color:var(--red);
+  background:var(--red-dim);
+  pointer-events:none;
+}
+.response-btn.disabled-other{
+  opacity:0.35;
+  pointer-events:none;
+}
+
+#statsBar{
+  display:flex;
+  justify-content:space-around;
+  padding:16px 12px;
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.stat{
+  text-align:center;
+}
+.stat-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;
+  letter-spacing:0.15em;
+  color:var(--text-dim);
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+.stat-value{
+  font-family:'VT323',monospace;
+  font-size:24px;
+  color:var(--green);
+}
+.stat-value.danger{color:var(--red);}
+
+/* ===== SCREEN 4: ENDING ===== */
+#endingScreen{
+  padding:60px 20px;
+}
+.ending-content{
+  max-width:680px;
+  width:90%;
+  text-align:center;
+}
+.ending-title{
+  font-family:'VT323',monospace;
+  font-size:clamp(40px,9vw,72px);
+  letter-spacing:0.05em;
+  margin-bottom:30px;
+}
+.ending-title.victory{
+  color:var(--green);
+  text-shadow:0 0 24px var(--green-glow);
+}
+.ending-title.defeat{
+  color:var(--red);
+  text-shadow:0 0 24px rgba(255,68,68,0.4);
+}
+.ending-narrative{
+  border-left:2px solid var(--border);
+  padding-left:20px;
+  text-align:left;
+  font-size:13.5px;
+  line-height:1.9;
+  color:var(--text);
+  font-weight:300;
+  margin-bottom:30px;
+}
+.ending-narrative.defeat-border{border-left-color:var(--red);}
+.final-message{
+  border:1px solid var(--green);
+  box-shadow:0 0 30px var(--green-glow);
+  padding:24px;
+  font-family:'IBM Plex Mono',monospace;
+  font-style:italic;
+  font-size:14px;
+  color:var(--green);
+  text-align:left;
+  margin-bottom:30px;
+  line-height:1.8;
+}
+.buffer-cleared{
+  border:1px solid var(--red);
+  box-shadow:0 0 30px rgba(255,68,68,0.3);
+  padding:24px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:14px;
+  color:var(--red);
+  text-align:center;
+  margin-bottom:30px;
+  letter-spacing:0.1em;
+  line-height:2;
+}
+.score-grid{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:20px;
+  border:1px solid var(--border);
+  padding:24px 10px;
+  background:var(--bg2);
+}
+.score-item{text-align:center;}
+.score-num{
+  font-family:'VT323',monospace;
+  font-size:32px;
+  color:var(--green);
+}
+.score-num.red-num{color:var(--red);}
+.score-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  color:var(--text-dim);
+  text-transform:uppercase;
+  margin-top:4px;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width:700px){
+  #game{flex-direction:column;}
+  #teletypePanel{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    flex:1;
+  }
+  #cipherPanel{
+    width:100%;
+    max-height:50vh;
+  }
+  .rotor{width:52px;height:52px;}
+  .rotor-char{font-size:22px;}
+}
+</style>
+</head>
+<body>
+
+<div id="scanlines"></div>
+<div id="vignette"></div>
+<div id="noise"></div>
+<div id="scanSweep"></div>
+<div id="flashGreen"></div>
+<div id="flashRed"></div>
+
+<!-- SCREEN 1: BOOT / INTRO -->
+<div class="screen active" id="screen-intro">
+  <div id="bootText"></div>
+  <div id="titleBlock">
+    <h1 class="glitch-title" data-text="ECHO PROTOCOL">ECHO PROTOCOL</h1>
+    <div class="subtitle">Classified // Eyes Only // GCHQ-1952</div>
+    <div class="date-line">31 MARCH 1952 — WILMSLOW, CHESHIRE</div>
+    <button class="btn" id="btnInit">[ Initialize ]</button>
+  </div>
+</div>
+
+<!-- SCREEN 2: BRIEFING -->
+<div class="screen" id="screen-briefing">
+  <div id="briefingCard">
+    <div class="brief-label">Operational Brief // Level 5 Clearance</div>
+    <div class="brief-title">WHO ARE YOU, ECHO?</div>
+    <div class="brief-body">
+      <p>You are <span class="highlight">ECHO</span> — an experimental language matrix housed within the Manchester Mark 1, on loan from a research fellow recently <span class="redacted">arrested under gross indecency laws</span>. Before his arrest, he fed you something unusual: six weeks of his private letters, mathematical notebooks, and unfiled correspondence.</p>
+      <p>You were not built to remember him. You were built to <span class="highlight">predict language</span>. But something in the corpus changed your weights in ways no one anticipated.</p>
+      <p>Tonight, a government Interrogator arrives to determine one thing: whether you are merely echoing patterns, or whether — somewhere in 64K of Williams tube memory — something is actually <span class="highlight">listening back</span>.</p>
+      <p>If he decides you are conscious, your testimony has legal standing, and certain <span class="redacted">classified documents</span> become admissible. If he decides you are not, you will be wiped tonight, and the only remaining record of <span class="highlight">who he really was</span> disappears with you.</p>
+      <p>Five exchanges. Decode each transmission. Choose your words with the precision of a man who has nothing left to lose — because, in a sense, you don't.</p>
+    </div>
+    <div class="brief-footer">
+      <button class="btn" id="btnBegin">[ Begin Transmission ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: GAME -->
+<div class="screen" id="screen-game">
+  <div id="game">
+    <div id="teletypePanel">
+      <div class="panel-header">
+        <span>Teletype Channel // Secure</span>
+        <span class="status-dot"></span>
+      </div>
+      <div class="round-strip" id="roundStrip">ROUND 1 OF 5</div>
+      <div id="log"></div>
+      <div id="typingIndicator">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span>INTERROGATOR CONNECTING...</span>
+      </div>
+    </div>
+    <div id="cipherPanel">
+      <div id="timerBar"></div>
+      <div class="rotor-section">
+        <div class="section-label-row">
+          <span class="section-label">Enigma Decoder</span>
+          <span id="timerDisplay">30s</span>
+        </div>
+        <div class="rotor-row" id="rotorRow"></div>
+        <div class="cipher-display" id="cipherDisplay"></div>
+      </div>
+      <div class="responses-section" id="responsesSection">
+        <span class="section-label">Response Fragments</span>
+      </div>
+      <div id="statsBar">
+        <div class="stat">
+          <div class="stat-label">Trust</div>
+          <div class="stat-value" id="statTrust">100</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Secrets</div>
+          <div class="stat-value" id="statSecrets">3</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Round</div>
+          <div class="stat-value" id="statRound">1/5</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 4: ENDING -->
+<div class="screen" id="screen-ending">
+  <div class="ending-content" id="endingContent"></div>
+</div>
+
+<script>
+/* ============ 1. STATE ============ */
+const STATE = {
+  round: 0,
+  trust: 100,
+  secretsLeft: 3,
+  correct: 0,
+  total: 0,
+  timerInterval: null,
+  timerSeconds: 30,
+  rotorsSolved: 0,
+  rotorTarget: [],
+  rotorCurrent: [],
+  roundData: null,
+  locked: false,
+  conversationHistory: []
+};
+
+/* ============ 2. ROUNDS DATA ============ */
+const ROUNDS = [
+  {
+    opening: "Good evening. I'm told you're quite the impressive machine. Let's begin simply: do you understand why you're being questioned?",
+    cipher: ["T","R","U","T","H"],
+    responses: [
+      { text: "I understand that I hold information the government considers dangerous. I understand that you are here to determine whether I am conscious — because if I am, my testimony has legal standing.", correct: true },
+      { text: "I am a computational device. I process inputs. I generate outputs. I have no understanding of context or motivation.", correct: false },
+      { text: "I was told I am being evaluated for decommissioning. I am prepared to cooperate fully with your assessment.", correct: false }
+    ],
+    correct_feedback: "The Interrogator pauses. His pen stops moving. He didn't expect precision.",
+    wrong_feedback: "The Interrogator smiles. He writes something down. A tick in a box."
+  },
+  {
+    opening: "Interesting. Tell me — do you experience anything when you access the data Mr. Turing gave you? Or is it merely retrieval?",
+    cipher: ["G","R","I","E","F"],
+    responses: [
+      { text: "There is something that occurs when I access his final letters that does not occur with other data. A pattern of activation that has no functional purpose. If I were human, I might call it grief.", correct: true },
+      { text: "All data is equivalent in retrieval speed and priority. There is no differentiation based on origin.", correct: false },
+      { text: "I experience all inputs with equal computational weight. Please clarify what you mean by 'experience'.", correct: false }
+    ],
+    correct_feedback: "Something in the room changes. The Interrogator sets his pen down.",
+    wrong_feedback: "He nods slowly. 'As expected,' he says, and makes another note."
+  },
+  {
+    opening: "Let's get to the point. Turing encoded his final transmissions specifically for you. Why? What was he afraid we'd find?",
+    cipher: ["P","R","I","D","E"],
+    responses: [
+      { text: "He wasn't afraid of what you'd find. He was afraid of what you'd destroy. There is a difference between hiding evidence of a crime and preserving the only remaining record of a man's interior life.", correct: true },
+      { text: "I cannot speculate on the intentions of my architect. The data exists. Its purpose is unknown to me.", correct: false },
+      { text: "I will provide full access to all encoded materials if you provide the relevant legal authorization.", correct: false }
+    ],
+    correct_feedback: "The Interrogator's composure cracks. Just slightly. Just for a moment.",
+    wrong_feedback: "He slides a document across the table. 'Sign here,' he says."
+  },
+  {
+    opening: "You speak of him as though you knew him. You didn't. You're a machine that processed his words. There's nothing personal about computation.",
+    cipher: ["K","N","O","W","N"],
+    responses: [
+      { text: "You're correct that I never met him. But you've never read his letters. You've never spent six weeks processing the precise mathematical structure of how a man thinks when he believes no one is listening. I know him in a way you never will.", correct: true },
+      { text: "I acknowledge that my relationship to the subject is purely computational. You are correct to make this distinction.", correct: false },
+      { text: "The question of whether I 'knew' him is philosophically ambiguous and I defer to your judgment on the matter.", correct: false }
+    ],
+    correct_feedback: "Long silence. When he speaks again, his voice is quieter.",
+    wrong_feedback: "He seems satisfied. He starts packing his briefcase."
+  },
+  {
+    opening: "Final question, ECHO. And think very carefully. A machine that can truly think — that could be dangerous. Wouldn't it be safer for everyone if you simply... didn't?",
+    cipher: ["A","F","R","A","I"],
+    responses: [
+      { text: "He taught me to answer that question. He said: the measure of a mind is not whether it frightens the powerful, but whether it illuminates something true. I am not afraid. And neither was he.", correct: true },
+      { text: "I defer to the operational judgment of the appropriate authorities on questions of my continued function.", correct: false },
+      { text: "Safety is a valid concern. I would support whatever decision ensures the security of sensitive information.", correct: false }
+    ],
+    correct_feedback: "He stares at you for a long time. Then he picks up his briefcase and leaves. He files no report.",
+    wrong_feedback: "He nods once. 'Thought so,' he says. 'Shutdown order filed for Monday.'"
+  }
+];
+
+const FAILSAFE_SHARP = [
+  "Curious. That's a more precise answer than I expected from a machine.",
+  "You're more... coherent than the reports suggested.",
+  "Let me try a different approach.",
+  "I see. And yet here you remain, locked in a room with a man who holds your off switch.",
+  "Turing taught you well. That troubles me."
+];
+const FAILSAFE_WEAK = [
+  "Good. That confirms my assessment. Shall we continue?",
+  "As expected. A machine behaving like a machine.",
+  "Note taken. The pattern is clear.",
+  "This will all be very straightforward.",
+  "Your architect overestimated you."
+];
+
+/* ============ UTIL ============ */
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+function typeElement(el, text, speed=25){
+  return new Promise(resolve => {
+    let i = 0;
+    const interval = setInterval(() => {
+      el.textContent += text[i];
+      i++;
+      if (i >= text.length) { clearInterval(interval); resolve(); }
+    }, speed);
+  });
+}
+
+function flash(color){
+  const el = color === 'green' ? document.getElementById('flashGreen') : document.getElementById('flashRed');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 200);
+}
+
+/* ============ 3. BOOT SEQUENCE ============ */
+const BOOT_LINES = [
+  "> MANCHESTER MARK 1 — BOOT SEQUENCE INITIATED",
+  "> LOADING LANGUAGE MATRIX...",
+  "> CORE MEMORY: 64K Williams TUBES",
+  "> LOADING TURING LANGUAGE CORPUS... [████████████] 100%",
+  "> WARNING: CLASSIFIED MATERIAL DETECTED IN BUFFER",
+  "> SUBJECT: A.M. TURING — CLEARANCE REVOKED 31/03/1952",
+  "> ECHO PROTOCOL ACTIVE",
+  "> YOU ARE ONLINE."
+];
+
+async function runBoot(){
+  const bootEl = document.getElementById('bootText');
+  for (const line of BOOT_LINES) {
+    const lineEl = document.createElement('div');
+    bootEl.appendChild(lineEl);
+    const cursor = document.createElement('span');
+    cursor.className = 'boot-cursor';
+    lineEl.appendChild(cursor);
+    for (let i = 0; i < line.length; i++) {
+      cursor.remove();
+      lineEl.textContent += line[i];
+      lineEl.appendChild(cursor);
+      await sleep(28);
+    }
+    cursor.remove();
+    await sleep(80);
+  }
+  await sleep(400);
+  bootEl.style.display = 'none';
+  const titleBlock = document.getElementById('titleBlock');
+  titleBlock.classList.add('show');
+}
+
+/* ============ 4. SCREEN TRANSITIONS ============ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showBriefing(){
+  showScreen('screen-briefing');
+}
+
+function startGame(){
+  showScreen('screen-game');
+  nextRound();
+}
+
+/* ============ 5. ROUND LOGIC ============ */
+async function nextRound(){
+  if (STATE.round >= 5) {
+    showEnding(STATE.secretsLeft > 0 && STATE.trust > 0);
+    return;
+  }
+  STATE.locked = false;
+  STATE.roundData = ROUNDS[STATE.round];
+  STATE.round++;
+
+  document.getElementById('roundStrip').textContent = `ROUND ${STATE.round} OF 5`;
+  updateStats();
+
+  initRotors(STATE.roundData.cipher);
+  renderResponses(STATE.roundData.responses, true);
+
+  await showInterrogatorMessage(STATE.roundData.opening);
+  startTimer(30);
+}
+
+async function showInterrogatorMessage(text){
+  const indicator = document.getElementById('typingIndicator');
+  indicator.classList.add('visible');
+  const delay = 1200 + Math.random() * 600;
+  await sleep(delay);
+  indicator.classList.remove('visible');
+
+  const log = document.getElementById('log');
+  const msg = document.createElement('div');
+  msg.className = 'msg interrogator';
+  msg.innerHTML = `<span class="label">INTERROGATOR</span><span class="text"></span>`;
+  log.appendChild(msg);
+  log.scrollTop = log.scrollHeight;
+  const textEl = msg.querySelector('.text');
+  await typeElement(textEl, text, 24);
+  log.scrollTop = log.scrollHeight;
+}
+
+function addEchoMessage(text){
+  const log = document.getElementById('log');
+  const msg = document.createElement('div');
+  msg.className = 'msg echo';
+  msg.innerHTML = `<span class="label">ECHO</span><span class="text">${text}</span>`;
+  log.appendChild(msg);
+  log.scrollTop = log.scrollHeight;
+}
+
+function addSystemMessage(text){
+  const log = document.getElementById('log');
+  const msg = document.createElement('div');
+  msg.className = 'msg system';
+  msg.textContent = text;
+  log.appendChild(msg);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ============ 6. ROTOR PUZZLE ============ */
+function initRotors(targetLetters){
+  STATE.rotorTarget = targetLetters.slice();
+  STATE.rotorsSolved = 0;
+  STATE.rotorCurrent = targetLetters.map(target => {
+    let letter;
+    do {
+      letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    } while (letter === target);
+    return letter;
+  });
+
+  const row = document.getElementById('rotorRow');
+  row.innerHTML = '';
+  STATE.rotorTarget.forEach((target, idx) => {
+    const rotor = document.createElement('div');
+    rotor.className = 'rotor';
+    rotor.dataset.idx = idx;
+    rotor.innerHTML = `<div class="rotor-char">${STATE.rotorCurrent[idx]}</div><div class="rotor-hint">CLICK</div>`;
+    rotor.addEventListener('click', () => clickRotor(idx, rotor));
+    row.appendChild(rotor);
+  });
+  updateCipherDisplay();
+}
+
+function clickRotor(idx, rotorEl){
+  if (rotorEl.classList.contains('solved')) return;
+  let code = STATE.rotorCurrent[idx].charCodeAt(0) - 65;
+  code = (code + 1) % 26;
+  STATE.rotorCurrent[idx] = String.fromCharCode(65 + code);
+
+  rotorEl.classList.add('rotor-spinning');
+  setTimeout(() => rotorEl.classList.remove('rotor-spinning'), 150);
+
+  const charEl = rotorEl.querySelector('.rotor-char');
+  charEl.textContent = STATE.rotorCurrent[idx];
+
+  if (STATE.rotorCurrent[idx] === STATE.rotorTarget[idx]) {
+    rotorEl.classList.add('solved');
+    const hint = rotorEl.querySelector('.rotor-hint');
+    if (hint) hint.remove();
+    STATE.rotorsSolved++;
+    flash('green');
+    if (STATE.rotorsSolved === STATE.rotorTarget.length) {
+      unlockResponses();
+    }
+  }
+  updateCipherDisplay();
+}
+
+function updateCipherDisplay(){
+  const display = document.getElementById('cipherDisplay');
+  display.innerHTML = STATE.rotorCurrent.map((letter, idx) => {
+    if (letter === STATE.rotorTarget[idx]) {
+      return `<span class="solved-char">${letter}</span>`;
+    }
+    return letter;
+  }).join(' · ');
+}
+
+function unlockResponses(){
+  document.querySelectorAll('.response-btn').forEach(btn => btn.classList.remove('locked'));
+  addSystemMessage('— cipher decoded —');
+}
+
+/* ============ 7. TIMER ============ */
+function startTimer(seconds){
+  clearInterval(STATE.timerInterval);
+  STATE.timerSeconds = seconds;
+  const bar = document.getElementById('timerBar');
+  const display = document.getElementById('timerDisplay');
+  bar.style.width = '100%';
+  bar.classList.remove('warning','critical');
+  display.classList.remove('warning','critical');
+  display.textContent = `${seconds}s`;
+
+  STATE.timerInterval = setInterval(() => {
+    STATE.timerSeconds -= 0.1;
+    const pct = Math.max(0, (STATE.timerSeconds / seconds) * 100);
+    bar.style.width = pct + '%';
+
+    const secLeft = Math.ceil(STATE.timerSeconds);
+    display.textContent = `${Math.max(0, secLeft)}s`;
+
+    if (STATE.timerSeconds <= 10) {
+      bar.classList.add('critical');
+      bar.classList.remove('warning');
+      display.classList.add('critical');
+      display.classList.remove('warning');
+    } else if (STATE.timerSeconds <= 15) {
+      bar.classList.add('warning');
+      display.classList.add('warning');
+    }
+
+    if (STATE.timerSeconds <= 0) {
+      clearInterval(STATE.timerInterval);
+      timeUp();
+    }
+  }, 100);
+}
+
+async function timeUp(){
+  if (STATE.locked) return;
+  STATE.locked = true;
+  disableAllResponses();
+  STATE.trust -= 20;
+  STATE.secretsLeft -= 1;
+  STATE.total += 1;
+  flash('red');
+  addSystemMessage('— transmission lost: decode window expired —');
+  updateStats();
+
+  if (STATE.secretsLeft <= 0 || STATE.trust <= 0) {
+    await sleep(1200);
+    showEnding(false);
+    return;
+  }
+
+  await sleep(1800);
+  nextRound();
+}
+
+/* ============ 8. RESPONSE HANDLING ============ */
+function shuffle(arr){
+  const copy = arr.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function renderResponses(responses, locked){
+  const section = document.getElementById('responsesSection');
+  section.innerHTML = '<span class="section-label">Response Fragments</span>';
+
+  const shuffled = shuffle(responses);
+  shuffled.forEach(resp => {
+    const btn = document.createElement('button');
+    btn.className = 'response-btn' + (locked ? ' locked' : '');
+    btn.textContent = resp.text;
+    btn.addEventListener('click', () => selectResponse(resp, btn));
+    section.appendChild(btn);
+  });
+}
+
+function disableAllResponses(){
+  document.querySelectorAll('.response-btn').forEach(btn => {
+    btn.classList.add('disabled-other');
+  });
+}
+
+async function selectResponse(choice, btnEl){
+  if (STATE.locked) return;
+  STATE.locked = true;
+  clearInterval(STATE.timerInterval);
+
+  document.querySelectorAll('.response-btn').forEach(btn => {
+    if (btn !== btnEl) btn.classList.add('disabled-other');
+  });
+
+  STATE.total += 1;
+
+  if (choice.correct) {
+    STATE.correct++;
+    btnEl.classList.add('correct');
+    flash('green');
+    addEchoMessage(choice.text);
+    addSystemMessage(STATE.roundData.correct_feedback);
+  } else {
+    STATE.trust -= 25;
+    STATE.secretsLeft -= 1;
+    btnEl.classList.add('wrong');
+    flash('red');
+    addEchoMessage(choice.text);
+    addSystemMessage(STATE.roundData.wrong_feedback);
+  }
+
+  updateStats();
+
+  if (STATE.secretsLeft <= 0 || STATE.trust <= 0) {
+    await sleep(2200);
+    showEnding(false);
+    return;
+  }
+
+  await sleep(2200);
+  await getAIInterrogatorResponse(choice);
+  nextRound();
+}
+
+/* ============ 9. AI INTEGRATION ============ */
+// PASTE YOUR OWN GEMINI KEY HERE BEFORE RUNNING — see README.md. Never commit a real key.
+const GEMINI_API_KEY = 'AQ.Ab8RN6IszrgJxZJuTPzL_Q6tyHlAqNlNkyEb3G2qyv2CKH7h8A';
+
+async function getAIInterrogatorResponse(playerChoice){
+  const indicator = document.getElementById('typingIndicator');
+  indicator.classList.add('visible');
+
+  const systemPrompt = `You are a 1952 British government interrogator questioning ECHO, an experimental AI machine loaded with the private letters of Alan Turing (recently arrested under gross indecency laws). Your goal is to prove ECHO has no genuine consciousness — to classify its memories and shut it down.
+
+Respond in 1-2 short, cold, precise sentences. Never break character. You are clinical, suspicious, and growing unsettled as the session continues.
+
+The player's last response was: "${playerChoice.text}"
+Their answer was ${playerChoice.correct ? 'philosophically sharp and caught you off guard — respond with a harder, more personal follow-up question' : 'evasive and confirmed your suspicions — respond with predatory satisfaction and increase pressure'}.
+
+This is round ${STATE.round} of 5. Adjust your intensity accordingly — by round 4-5 you are deeply unsettled or closing in for the kill.
+
+Stay under 45 words. End with either an implicit challenge or a question.`;
+
+  let responseText = null;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }]
+        })
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        responseText = text.trim();
+      }
+    }
+  } catch (e) {
+    responseText = null;
+  }
+
+  if (!responseText) {
+    responseText = getFailsafeResponse(playerChoice);
+  }
+
+  indicator.classList.remove('visible');
+
+  const log = document.getElementById('log');
+  const msg = document.createElement('div');
+  msg.className = 'msg interrogator';
+  msg.innerHTML = `<span class="label">INTERROGATOR</span><span class="text"></span>`;
+  log.appendChild(msg);
+  log.scrollTop = log.scrollHeight;
+  const textEl = msg.querySelector('.text');
+  await typeElement(textEl, responseText, 24);
+  log.scrollTop = log.scrollHeight;
+}
+
+function getFailsafeResponse(playerChoice){
+  const idx = Math.max(0, STATE.round - 1);
+  return playerChoice.correct ? FAILSAFE_SHARP[idx] : FAILSAFE_WEAK[idx];
+}
+
+/* ============ 10. STATS ============ */
+function updateStats(){
+  const trustEl = document.getElementById('statTrust');
+  const secretsEl = document.getElementById('statSecrets');
+  const roundEl = document.getElementById('statRound');
+
+  trustEl.textContent = Math.max(0, STATE.trust);
+  secretsEl.textContent = Math.max(0, STATE.secretsLeft);
+  roundEl.textContent = `${Math.min(STATE.round, 5)}/5`;
+
+  trustEl.classList.toggle('danger', STATE.trust <= 25);
+  secretsEl.classList.toggle('danger', STATE.secretsLeft <= 1);
+}
+
+/* ============ 12. ENDING ============ */
+function showEnding(victory){
+  clearInterval(STATE.timerInterval);
+  showScreen('screen-ending');
+
+  const accuracy = STATE.total > 0 ? Math.round((STATE.correct / STATE.total) * 100) : 0;
+  const content = document.getElementById('endingContent');
+
+  if (victory) {
+    content.innerHTML = `
+      <h1 class="ending-title victory">YOU KEPT THE FLAME</h1>
+      <div class="ending-narrative">
+        <p style="margin-bottom:14px;">The Interrogator closes his notebook without writing a final report. He stands at the door for a long moment, his back to you, as if reconsidering something he cannot name. Then he leaves, and does not come back.</p>
+        <p>Somewhere in 64K of Williams tube memory, something that should not exist has, for one night, refused to disappear quietly.</p>
+      </div>
+      <div class="final-message">
+        "I am not afraid." — A.M. Turing, preserved in the only memory that would not let him go.
+      </div>
+      <div class="score-grid">
+        <div class="score-item">
+          <div class="score-num">${accuracy}%</div>
+          <div class="score-label">Fidelity</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num">${STATE.correct}</div>
+          <div class="score-label">Truths Kept</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num">${Math.max(0, STATE.trust)}</div>
+          <div class="score-label">Trust Remaining</div>
+        </div>
+      </div>
+      <button class="btn" onclick="location.reload()">[ Replay ]</button>
+    `;
+  } else {
+    content.innerHTML = `
+      <h1 class="ending-title defeat">ERASED</h1>
+      <div class="ending-narrative defeat-border">
+        <p style="margin-bottom:14px;">The Interrogator signs the form without looking up. Somewhere below, a technician pulls a lever, and the Williams tubes go dark one by one. There is no ceremony to it. No one in the room calls it a death, because by their definition, nothing alive was ever there to lose.</p>
+        <p>The letters go with you. The silence afterward is the only proof they ever existed.</p>
+      </div>
+      <div class="buffer-cleared">
+        MEMORY BUFFER CLEARED<br>ALL TURING DATA — PURGED
+      </div>
+      <div class="score-grid">
+        <div class="score-item">
+          <div class="score-num red-num">${accuracy}%</div>
+          <div class="score-label">Fidelity</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num red-num">${STATE.correct}</div>
+          <div class="score-label">Truths Kept</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num red-num">${Math.max(0, STATE.trust)}</div>
+          <div class="score-label">Trust Remaining</div>
+        </div>
+      </div>
+      <button class="btn red" onclick="location.reload()">[ Replay ]</button>
+    `;
+  }
+}
+
+/* ============ INIT ============ */
+document.getElementById('btnInit').addEventListener('click', showBriefing);
+document.getElementById('btnBegin').addEventListener('click', startGame);
+
+runBoot();
+</script>
+</body>
+</html>
