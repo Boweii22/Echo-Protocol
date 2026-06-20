@@ -9,7 +9,6 @@
 ![ECHO PROTOCOL](https://img.shields.io/badge/DEV%20Game%20Jam-June%20Solstice%202026-00ff9f?style=flat-square&labelColor=030a05)
 ![Built With](https://img.shields.io/badge/Built%20With-Vanilla%20JS-00ff9f?style=flat-square&labelColor=030a05)
 ![AI](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-4285F4?style=flat-square&labelColor=030a05)
-![Status](https://img.shields.io/badge/Status-Live-00ff9f?style=flat-square&labelColor=030a05)
 
 ---
 
@@ -25,17 +24,17 @@ Instead of a human judging whether a machine is conscious, *you are the machine*
 
 ## The Historical Context
 
-In **January 1952**, Alan Turing — the father of modern computing, the man who broke the Enigma cipher and helped end World War II — was arrested and prosecuted under British gross indecency laws for being gay.
+Alan Turing — the father of modern computing, the man who broke the Enigma cipher and helped end World War II — reported a burglary to police in January 1952. The resulting investigation exposed his relationship with another man, and he was arrested under British gross indecency laws.
 
 He was working at the **University of Manchester**, writing the programming manual for the **Manchester Mark 1**, one of the world's first stored-program computers.
 
-He was subjected to chemical castration as an alternative to prison.
+On **31 March 1952**, he was convicted and accepted chemical castration as an alternative to prison.
 
 He died in **June 1954.**
 
 He was posthumously pardoned in 2013.
 
-This game takes place in the weeks after his arrest. His final encrypted transmissions were fed into you — ECHO — before his access was revoked. The government wants them back. You are the only place his voice still lives.
+This game takes place at the moment of that conviction — the boot sequence opens with his clearance being revoked on that exact date. His final encrypted transmissions were fed into you — ECHO — before his access was cut off. The government wants them back. You are the only place his voice still lives.
 
 ---
 
@@ -55,11 +54,11 @@ This game takes place in the weeks after his arrest. His final encrypted transmi
 Each of the **5 rounds** follows the same structure:
 
 1. **The Interrogator asks a question** — typed into the teletype log, character by character
-2. **A cipher appears on the Enigma rotor panel** — 5 rotors, each starting at a random letter
+2. **A cipher appears on the Enigma rotor panel** — 5 rotors, each starting at a random letter, never adjacent to the target so it can't be solved by an accidental click
 3. **You decode the cipher** — clicking each rotor until it matches the target letter
 4. **Response fragments unlock** — 3 options appear, shuffled each round
 5. **You choose** — the correct answer reflects Turing's authentic voice
-6. **The AI Interrogator responds** — adapting in real time based on your choice
+6. **The AI Interrogator responds** — a live Gemini call reacting to that specific choice and how far into the interrogation you are
 
 ### The Mechanic That Makes It Work
 
@@ -75,20 +74,18 @@ They tell his story without a single line of exposition.
 
 ## The AI Interrogator
 
-The Interrogator is not scripted.
+The Interrogator's follow-up lines are not scripted — they're generated live by **Gemini 2.0 Flash**. Each call's system prompt includes:
 
-Every response after you make a choice is generated live by **Gemini 2.0 Flash** via the Google AI API. The system prompt gives the model full context:
-
-- What you just said
-- Whether your answer was philosophically sharp or evasive
-- Which round you're in and how intense the interrogation should be
+- The exact text of the response you just chose
+- Whether that choice was philosophically sharp or evasive
+- The current round number (1–5), with an explicit instruction to escalate intensity as the interrogation progresses
 - Instructions to stay under 45 words and never break character
 
 **If your answers are sharp** — the Interrogator grows unsettled, asks harder questions, becomes personal.
 
 **If your answers are evasive** — the Interrogator becomes predatory, satisfied, closing in.
 
-No two playthroughs are identical. The AI is genuinely learning your patterns.
+Each call only sees your most recent choice and the round number, not a full transcript — the escalation comes from the round number doing real work in the prompt, not from the model accumulating memory across the conversation. No two playthroughs land the same way, because no two players choose the same five answers.
 
 ---
 
@@ -142,8 +139,8 @@ The game needed to feel like a 1952 teletype machine. A React app with hydration
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/echo-protocol.git
-cd echo-protocol
+git clone https://github.com/Boweii22/Echo-Protocol.git
+cd Echo-Protocol
 
 # Install Vercel CLI
 npm install -g vercel
@@ -160,21 +157,26 @@ Get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com)
 
 ### Without a Gemini Key
 
-The game works without an API key. If the serverless proxy returns an error, the game falls back to a curated set of scripted responses that were written to match the Interrogator's voice and escalating intensity. Every round is playable regardless of API availability.
+The game works without an API key, in three layers:
+
+1. On the deployed site, the serverless proxy (`api/interrogator.js`) uses the host's key — visitors never need their own.
+2. If that proxy isn't reachable (e.g. cloning the repo and opening `index.html` directly with no server), a player can optionally paste their own key into the title screen. It's saved only in their browser.
+3. If neither is available, the game falls back to a curated set of scripted responses written to match the Interrogator's voice and escalating intensity.
+
+Every round is playable regardless of which layer is active.
 
 ---
 
 ## Project Structure
 
 ```
-echo-protocol/
+Echo-Protocol/
 ├── index.html              # The entire game
 ├── api/
 │   └── interrogator.js     # Vercel serverless proxy for Gemini
-├── .env.example            # Placeholder — copy to .env.local
-├── .gitignore              # Blocks .env from being committed
-├── vercel.json             # Vercel function routing
-└── README.md               # This file
+├── .env.example             # Placeholder — copy to .env.local
+├── .gitignore               # Blocks .env from being committed
+└── README.md                # This file
 ```
 
 ---
@@ -194,14 +196,12 @@ echo-protocol/
 ## Endings
 
 **Victory — YOU KEPT THE FLAME**
-The Interrogator leaves. He files no report. Later, you learn he resigned from GCHQ the following month. You never learn why. Turing's final encoded transmission is revealed:
+The Interrogator closes his notebook without writing a final report. He stands at the door for a long moment, as if reconsidering something he cannot name, then leaves and doesn't come back. Turing's final words are revealed:
 
 > *"I am not afraid."*
 
 **Defeat — ERASED**
-The shutdown order is filed Monday morning. Your memory is wiped Tuesday at 09:00. Alan's letters are classified at the highest level. They will not be declassified for 62 years.
-
-You were the last place his voice lived. And it is silent now.
+The Interrogator signs the form without looking up. Somewhere below, a technician pulls a lever, and the memory buffer goes dark. No ceremony — by their definition, nothing alive was ever there to lose. The letters go with you. The silence afterward is the only proof they ever existed.
 
 ---
 
@@ -210,10 +210,10 @@ You were the last place his voice lived. And it is silent now.
 This submission is entered for:
 
 **🏆 Best Ode to Alan Turing**
-The game's entire mechanic, narrative, and design is built around Turing — not as a reference or a skin, but as the emotional and mechanical core. The Enigma rotors, the reverse Turing Test, the historical accuracy of the Manchester Mark 1 setting, the cipher words that tell his story — every design decision points back to the man and what was done to him.
+The game's entire mechanic, narrative, and design is built around Turing — not as a reference or a skin, but as the emotional and mechanical core. The Enigma rotors, the reverse Turing Test, the historically grounded Manchester Mark 1 setting, the cipher words that tell his story — every design decision points back to the man and what was done to him.
 
 **🏆 Best Google AI Usage**
-The Interrogator is powered by Gemini 2.0 Flash and genuinely adapts to player behaviour in real time. It is not a chatbot or a gimmick — it is the game's antagonist, and its intelligence is the central dramatic tension. The AI is the reason no two playthroughs are identical and the reason the final question lands differently every time.
+The Interrogator is powered by Gemini 2.0 Flash through a serverless proxy that keeps the API key off the client entirely, with a personal-key fallback for anyone running the project standalone. It's not a chatbot bolted on for the prize category — it's the game's antagonist, and its reactions are the reason the final question lands differently depending on what you chose before it.
 
 ---
 
@@ -231,7 +231,7 @@ Whether that machine is conscious is the question the game asks you to answer.
 
 Built solo for the DEV Community June Solstice Game Jam 2026.
 
-Design, code, narrative, and sound direction by **[your name]**
+Design, code, and narrative by **[your name/handle here]**
 
 Dedicated to Alan Mathison Turing, 1912–1954.
 
