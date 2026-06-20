@@ -221,6 +221,42 @@ body{
 .btn.red{border-color:var(--red);color:var(--red);}
 .btn.red:hover{background:var(--red-dim);box-shadow:0 0 20px rgba(255,68,68,0.35);}
 
+.key-entry{
+  margin-top:26px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:280px;
+}
+.key-entry label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;
+  letter-spacing:0.2em;
+  color:var(--text-dim);
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+.key-entry input{
+  width:100%;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px;
+  padding:8px 10px;
+  text-align:center;
+  outline:none;
+  transition:border-color 0.2s;
+}
+.key-entry input:focus{border-color:var(--green);}
+.key-entry .key-hint{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:9.5px;
+  color:var(--text-dim);
+  margin-top:6px;
+  text-align:center;
+}
+
 /* ===== SCREEN 2: BRIEFING ===== */
 #briefingCard{
   max-width:680px;
@@ -716,6 +752,11 @@ body{
     <div class="subtitle">Classified // Eyes Only // GCHQ-1952</div>
     <div class="date-line">31 MARCH 1952 — WILMSLOW, CHESHIRE</div>
     <button class="btn" id="btnInit">[ Initialize ]</button>
+    <div class="key-entry">
+      <label for="geminiKeyInput">GEMINI API KEY (OPTIONAL)</label>
+      <input type="password" id="geminiKeyInput" autocomplete="off" placeholder="paste your own key to enable live AI">
+      <div class="key-hint">Stored only in this browser. Leave blank to use scripted dialogue.</div>
+    </div>
   </div>
 </div>
 
@@ -1011,11 +1052,12 @@ function initRotors(targetLetters){
   STATE.rotorTarget = targetLetters.slice();
   STATE.rotorsSolved = 0;
   STATE.rotorCurrent = targetLetters.map(target => {
-    let letter;
+    const targetCode = target.charCodeAt(0) - 65;
+    let code;
     do {
-      letter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    } while (letter === target);
-    return letter;
+      code = Math.floor(Math.random() * 26);
+    } while (Math.abs(code - targetCode) <= 1 || Math.abs(code - targetCode) >= 25);
+    return String.fromCharCode(65 + code);
   });
 
   const row = document.getElementById('rotorRow');
@@ -1198,8 +1240,11 @@ async function selectResponse(choice, btnEl){
 }
 
 /* ============ 9. AI INTEGRATION ============ */
-// PASTE YOUR OWN GEMINI KEY HERE BEFORE RUNNING — see README.md. Never commit a real key.
-const GEMINI_API_KEY = 'AQ.Ab8RN6IszrgJxZJuTPzL_Q6tyHlAqNlNkyEb3G2qyv2CKH7h8A';
+const GEMINI_KEY_STORAGE = 'echoProtocolGeminiKey';
+
+function getGeminiKey(){
+  return (localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim();
+}
 
 async function getAIInterrogatorResponse(playerChoice){
   const indicator = document.getElementById('typingIndicator');
@@ -1217,27 +1262,30 @@ This is round ${STATE.round} of 5. Adjust your intensity accordingly — by roun
 Stay under 45 words. End with either an implicit challenge or a question.`;
 
   let responseText = null;
+  const geminiKey = getGeminiKey();
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }]
-        })
+  if (geminiKey) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }]
+          })
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          responseText = text.trim();
+        }
       }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) {
-        responseText = text.trim();
-      }
+    } catch (e) {
+      responseText = null;
     }
-  } catch (e) {
-    responseText = null;
   }
 
   if (!responseText) {
@@ -1342,6 +1390,12 @@ function showEnding(victory){
 /* ============ INIT ============ */
 document.getElementById('btnInit').addEventListener('click', showBriefing);
 document.getElementById('btnBegin').addEventListener('click', startGame);
+
+const geminiKeyInput = document.getElementById('geminiKeyInput');
+geminiKeyInput.value = getGeminiKey();
+geminiKeyInput.addEventListener('change', () => {
+  localStorage.setItem(GEMINI_KEY_STORAGE, geminiKeyInput.value.trim());
+});
 
 runBoot();
 </script>
